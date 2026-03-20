@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 DATA_PATH = "/sessions/laughing-amazing-tesla/player_data_raw/player_data/"
-OUTPUT_PATH = "/sessions/laughing-amazing-tesla/mnt/LILA Assignment/lila-player-journey/public/data/"
+OUTPUT_PATH = "/sessions/laughing-amazing-tesla/lila-player-journey-git/public/data/"
 DAYS = ["February_10","February_11","February_12","February_13","February_14"]
 
 MAP_CONFIG = {
@@ -29,53 +29,48 @@ def decode_event(e):
 
 os.makedirs(OUTPUT_PATH, exist_ok=True)
 
-all_records = []
 match_index = {}
-skipped_count = 0
-skipped_reasons = {}
 
 for day in DAYS:
     day_path = os.path.join(DATA_PATH, day)
     if not os.path.exists(day_path):
         continue
     files = [f for f in os.listdir(day_path) if f.endswith(".nakama-0")]
-    
+    print(f"{day}: {len(files)} files")
+
     for fname in files:
         fpath = os.path.join(day_path, fname)
         try:
             df = pd.read_parquet(fpath)
         except Exception as e:
-            skipped_count += 1
-            reason = f"read_error: {type(e).__name__}"
-            skipped_reasons[reason] = skipped_reasons.get(reason, 0) + 1
+            print(f"  SKIP {fname}: {e}")
             continue
-        
+
         if df.empty:
-            skipped_count += 1
-            skipped_reasons["empty_file"] = skipped_reasons.get("empty_file", 0) + 1
             continue
-        
+
         # Decode event
         df["event"] = df["event"].apply(decode_event)
-        
+
         # Bot detection
         df["is_bot"] = pd.to_numeric(df["user_id"], errors="coerce").notna()
-        
+
         # Strip match_id suffix
         df["match_id_clean"] = df["match_id"].str.replace(".nakama-0", "", regex=False)
-        
-        # ts normalization (per file = per player in a match)
-        ts_ms = df["ts"].astype("int64") // 1_000_000  # convert to ms int
+
+        # ── FIXED TIMESTAMP NORMALIZATION ──────────────────────────────────
+        # datetime64[ms].astype("int64") gives ms since epoch directly.
+        # Do NOT divide by 1_000_000 — that collapses all events to the same ms bucket.
+        ts_ms = df["ts"].astype("int64")          # already in milliseconds
         df["ts_norm_ms"] = (ts_ms - ts_ms.min()).astype(int)
-        
+        # ───────────────────────────────────────────────────────────────────
+
         # Pixel coords
-        map_id = df["map_id"].iloc[0] if "map_id" in df.columns else "AmbroseValley"
+        map_id = df["map_id"].iloc[0]
         if map_id not in MAP_CONFIG:
-            skipped_count += 1
-            reason = f"unknown_map: {map_id}"
-            skipped_reasons[reason] = skipped_reasons.get(reason, 0) + 1
+            print(f"  SKIP {fname}: unknown map {map_id}")
             continue
-        
+
         px_list, py_list = [], []
         for _, row in df.iterrows():
             px, py = world_to_pixel(row["x"], row["z"], map_id)
@@ -83,11 +78,11 @@ for day in DAYS:
             py_list.append(py)
         df["px"] = px_list
         df["py"] = py_list
-        
-        # Drop duplicates
+
+        # Drop true duplicates only (same player, same ms, same event)
         df = df.drop_duplicates(subset=["user_id", "ts_norm_ms", "event"])
-        
-        # Build per-player record
+
+        # Build record
         record = {
             "user_id": df["user_id"].iloc[0],
             "match_id": df["match_id_clean"].iloc[0],
@@ -96,7 +91,7 @@ for day in DAYS:
             "is_bot": bool(df["is_bot"].iloc[0]),
             "events": df[["ts_norm_ms", "px", "py", "event"]].to_dict("records")
         }
-        
+
         mid = df["match_id_clean"].iloc[0]
         if mid not in match_index:
             match_index[mid] = {
@@ -108,25 +103,21 @@ for day in DAYS:
                 "bot_count": 0,
                 "total_events": 0
             }
-        
+
         match_index[mid]["players"].append(record)
         if record["is_bot"]:
             match_index[mid]["bot_count"] += 1
         else:
             match_index[mid]["human_count"] += 1
         match_index[mid]["total_events"] += len(record["events"])
-        
-        all_records.append(record)
 
 # Write per-match JSON files
 match_summary = []
 for mid, mdata in match_index.items():
-    # Write individual match file
     match_file = os.path.join(OUTPUT_PATH, f"{mid}.json")
     with open(match_file, "w") as f:
         json.dump(mdata, f, separators=(",", ":"))
-    
-    # Summary entry (no players array — keep index small)
+
     match_summary.append({
         "match_id": mid,
         "map_id": mdata["map_id"],
@@ -137,14 +128,14 @@ for mid, mdata in match_index.items():
         "player_count": mdata["human_count"] + mdata["bot_count"]
     })
 
-# Write matches index
+# Sort by total_events descending so best matches appear first in selector
+match_summary.sort(key=lambda m: m["total_events"], reverse=True)
+
 with open(os.path.join(OUTPUT_PATH, "matches.json"), "w") as f:
     json.dump(match_summary, f, separators=(",", ":"), indent=2)
 
-print(f"Done. {len(all_records)} player-files processed. {len(match_index)} unique matches.")
-print(f"Skipped: {skipped_count} files")
-if skipped_reasons:
-    print("Skip reasons:")
-    for reason, count in skipped_reasons.items():
-        print(f"  {reason}: {count}")
-print(f"Output: {OUTPUT_PATH}")
+total_events = sum(m["total_events"] for m in match_summary)
+print(f"\nDone. {len(match_index)} matches. {total_events:,} total events.")
+print(f"Top 5 matches by events:")
+for m in match_summary[:5]:
+    print(f"  {m['match_id'][:20]}... {m['map_id']:20s} {m['total_events']} events, {m['player_count']} players")
