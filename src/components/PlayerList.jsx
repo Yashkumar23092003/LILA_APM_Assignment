@@ -30,7 +30,7 @@ export default function PlayerList({ players, selectedPlayer, onSelect }) {
 }
 
 const styles = {
-  container: { display: 'flex', flexDirection: 'column', gap: '6px', width: '200px', flexShrink: 0 },
+  container: { display: 'flex', flexDirection: 'column', gap: '6px', width: '200px', flexShrink: 0, overflowY: 'auto', maxHeight: 'calc(100vh - 140px)' },
   title: { fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.8px', margin: '0 0 6px' },
   row: { display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', borderRadius: '6px', border: '1px solid', cursor: 'pointer', transition: 'all 0.1s' },
   dot: { width: 10, height: 10, borderRadius: '50%', flexShrink: 0 },

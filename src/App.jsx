@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useLayoutEffect } from 'react'
 import MapCanvas from './components/MapCanvas.jsx'
 import FilterPanel from './components/FilterPanel.jsx'
 import PlaybackBar from './components/PlaybackBar.jsx'
@@ -25,6 +25,19 @@ export default function App() {
   const [heatmapType, setHeatmapType] = useState('position')
   const [showPaths, setShowPaths] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [canvasSize, setCanvasSize] = useState(600)
+
+  // Dynamically size canvas to fit viewport — header ~70px, playback ~52px,
+  // stats ~30px, padding ~40px, gap ~24px → reserve ~220px total
+  useLayoutEffect(() => {
+    const update = () => {
+      const available = window.innerHeight - 220
+      setCanvasSize(Math.min(Math.max(available, 320), 700))
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
 
   // Load match index
   useEffect(() => {
@@ -87,13 +100,13 @@ export default function App() {
         {/* Center: map + playback */}
         <div style={styles.center}>
           {!filters.selectedMatch ? (
-            <div style={styles.placeholder}>
+            <div style={{ ...styles.placeholder, width: canvasSize, height: canvasSize }}>
               <div style={{ fontSize: '48px' }}>🗺️</div>
               <p style={{ color: '#475569', marginTop: '12px' }}>Select a match to begin</p>
               <p style={{ color: '#334155', fontSize: '13px' }}>{matchList.length} matches loaded</p>
             </div>
           ) : loading ? (
-            <div style={styles.placeholder}>
+            <div style={{ ...styles.placeholder, width: canvasSize, height: canvasSize }}>
               <p style={{ color: '#475569' }}>Loading match data...</p>
             </div>
           ) : (
@@ -104,6 +117,7 @@ export default function App() {
               heatmapMode={heatmapMode}
               heatmapType={heatmapType}
               showPaths={showPaths}
+              canvasSize={canvasSize}
             />
           )}
 
@@ -159,13 +173,13 @@ const layerBtn = (active) => ({
 })
 
 const styles = {
-  app: { minHeight: '100vh', background: '#0f1117', color: '#e2e8f0', fontFamily: "'Segoe UI', system-ui, sans-serif", display: 'flex', flexDirection: 'column' },
+  app: { height: '100vh', overflow: 'hidden', background: '#0f1117', color: '#e2e8f0', fontFamily: "'Segoe UI', system-ui, sans-serif", display: 'flex', flexDirection: 'column' },
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid #1f2937', flexWrap: 'wrap', gap: '12px' },
   h1: { fontSize: '20px', fontWeight: 700, color: '#f8fafc', margin: 0 },
   sub: { fontSize: '12px', color: '#475569', margin: '4px 0 0' },
   headerControls: { display: 'flex', gap: '8px', alignItems: 'center' },
   hmSelect: { background: '#1a1f2e', border: '1px solid #334155', color: '#94a3b8', borderRadius: '6px', padding: '6px 10px', fontSize: '13px' },
-  main: { display: 'flex', gap: '20px', padding: '20px 24px', flex: 1, alignItems: 'flex-start', flexWrap: 'wrap' },
+  main: { display: 'flex', gap: '20px', padding: '16px 24px', flex: 1, alignItems: 'flex-start', flexWrap: 'nowrap', overflow: 'hidden' },
   center: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: '300px' },
   placeholder: { width: '700px', height: '700px', maxWidth: '100%', background: '#1a1f2e', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid #1f2937' },
   statsRow: { display: 'flex', gap: '16px', marginTop: '10px', flexWrap: 'wrap' },
