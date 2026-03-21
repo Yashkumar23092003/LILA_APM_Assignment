@@ -19,23 +19,19 @@ export default function FilterPanel({ filters, onChange, matchList }) {
     <div style={S.panel}>
 
       {/* ── MAP ── */}
-      <Section label="Map">
-        <div style={S.mapGrid}>
+      <Section label="🗺️ Map">
+        <select
+          style={{ ...S.select, color: selectedMap ? '#60a5fa' : '#64748b', fontWeight: selectedMap ? 600 : 400 }}
+          value={selectedMap}
+          onChange={e => onChange({ selectedMap: e.target.value, selectedMatch: '' })}
+        >
+          <option value="">All maps</option>
           {MAPS.map(m => (
-            <button
-              key={m}
-              style={{
-                ...S.mapBtn,
-                borderColor: selectedMap === m ? '#3b82f6' : '#1e2e47',
-                background:  selectedMap === m ? '#1d4ed822' : '#0d1320',
-                color:       selectedMap === m ? '#60a5fa' : '#64748b',
-              }}
-              onClick={() => onChange({ selectedMap: m, selectedMatch: '' })}
-            >
-              {m === 'AmbroseValley' ? '🌿 Ambrose' : m === 'GrandRift' ? '🏔 GrandRift' : '🏙 Lockdown'}
-            </button>
+            <option key={m} value={m}>
+              {m === 'AmbroseValley' ? '🌿 Ambrose Valley' : m === 'GrandRift' ? '🏔 Grand Rift' : '🏙 Lockdown'}
+            </option>
           ))}
-        </div>
+        </select>
       </Section>
 
       {/* ── DATE ── */}
@@ -135,8 +131,6 @@ const S = {
   panel:        { display: 'flex', flexDirection: 'column', gap: '2px' },
   section:      { display: 'flex', flexDirection: 'column', gap: '7px', padding: '12px 0', borderBottom: '1px solid #131c2e' },
   sectionLabel: { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#2d4060' },
-  mapGrid:      { display: 'grid', gridTemplateColumns: '1fr', gap: '4px' },
-  mapBtn:       { textAlign: 'left', padding: '7px 10px', borderRadius: '7px', border: '1.5px solid', cursor: 'pointer', fontSize: '12px', fontWeight: 500, transition: 'all 0.12s' },
   select:       { background: '#0d1320', border: '1px solid #1e2e47', borderRadius: '7px', color: '#cbd5e1', padding: '7px 10px', fontSize: '12px', width: '100%', cursor: 'pointer', appearance: 'auto' },
   clearBtn:     { background: 'none', border: 'none', color: '#334155', fontSize: '11px', cursor: 'pointer', textAlign: 'left', padding: '2px 0', marginTop: '-2px' },
   row:          { display: 'flex', gap: '8px' },

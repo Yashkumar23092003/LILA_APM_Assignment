@@ -17,13 +17,13 @@ const DEFAULT_FILTERS = {
 }
 
 function computeCanvasSize() {
-  const LEFT_W  = 220
-  const RIGHT_W = 260
-  const H_PAD   = 24 * 2 + 16 * 2
-  const V_PAD   = 60 + 70 + 36 + 24
+  const LEFT_W  = 280   // widened sidebar
+  const RIGHT_W = 280   // widened sidebar
+  const H_PAD   = 24 * 2 + 16 * 2  // outer padding + column gaps
+  const V_PAD   = 60 + 70 + 36 + 28 // header + playback + strip + padding
   const availW  = window.innerWidth  - LEFT_W - RIGHT_W - H_PAD
   const availH  = window.innerHeight - V_PAD
-  return Math.min(Math.max(Math.min(availW, availH), 320), 840)
+  return Math.min(Math.max(Math.min(availW, availH), 320), 860)
 }
 
 export default function App() {
@@ -157,17 +157,20 @@ export default function App() {
         <div style={T.controls}>
           {/* Primary layers */}
           <div style={T.ctrlGroup}>
-            <ToolBtn active={showPaths} onClick={() => setShowPaths(v=>!v)} icon="🛤" label="Paths" />
+            <ToolBtn active={showPaths} onClick={() => setShowPaths(v=>!v)} icon="🛤" label="Paths"
+              tip="Draws each player's movement trail. Solid lines = humans, dashed = bots." />
             <ToolBtn
               active={heatmapMode && !aggregateMode}
               onClick={() => { setHeatmapMode(v=>!v); setAggregateMode(false) }}
               icon="🌡" label="Heatmap"
+              tip="Shows density of player activity in this match. Hotter = more players passed through here."
             />
             <ToolBtn
               active={aggregateMode}
               onClick={() => { setAggregateMode(v=>!v); setHeatmapMode(false) }}
               icon="📊" label="Cross-Match"
               accent="#a78bfa"
+              tip="Aggregates all 796 matches into one heatmap. Reveals long-term patterns across the entire map."
             />
           </div>
 
@@ -210,36 +213,41 @@ export default function App() {
               onClick={() => setShowScorecard(v=>!v)}
               icon="⬡" label="Scorecard"
               accent="#10b981"
+              tip="Zone Balance Scorecard — K/D ratio, visit % and loot density per map zone, across all matches."
             />
             <ToolBtn
               active={showClusters}
               onClick={() => setShowClusters(v=>!v)}
               icon="🔴" label="Clusters"
               accent="#ef4444"
+              tip="Top 3 locations where the most deaths occurred in this match. ①②③ = rank by % share of total deaths."
             />
             <ToolBtn
               active={showDeadZones}
               onClick={() => setShowDeadZones(v=>!v)}
               icon="☠" label="Dead zones"
               accent="#ef4444"
+              tip="Highlights areas of the map rarely visited by players — potential wasted design space."
             />
             <ToolBtn
               active={showFlowVectors}
               onClick={() => setShowFlowVectors(v=>!v)}
               icon="↗" label="Flow"
               accent="#fb923c"
+              tip="Shows the dominant movement direction per grid cell. Reveals how players navigate the map."
             />
           </div>
 
           {/* Advanced / power-user */}
           <div style={T.ctrlGroupGhost}>
-            <button
-              style={{ ...T.ghostBtn, borderColor: zoneMode ? '#475569' : '#1a2333', color: zoneMode ? '#94a3b8' : '#2d4060', background: zoneMode ? '#1e2e4722' : 'transparent' }}
-              onClick={() => { setZoneMode(v=>!v); if (zoneMode) setZoneStats(null) }}
-              title="Advanced: drag to select a zone and compute area stats"
-            >
-              🎯 Zone analysis
-            </button>
+            <Tooltip text="Advanced: drag a rectangle on the map to get stats (players, kills, deaths, loot) for any custom area.">
+              <button
+                style={{ ...T.ghostBtn, borderColor: zoneMode ? '#475569' : '#1a2333', color: zoneMode ? '#94a3b8' : '#2d4060', background: zoneMode ? '#1e2e4722' : 'transparent' }}
+                onClick={() => { setZoneMode(v=>!v); if (zoneMode) setZoneStats(null) }}
+              >
+                🎯 Zone analysis
+              </button>
+            </Tooltip>
           </div>
         </div>
       </header>
@@ -343,19 +351,17 @@ export default function App() {
           )}
         </div>
 
-        {/* RIGHT: Player list + zone stats */}
-        {(hasMatch || (aggregateMode && aggregateData)) && (
-          <aside style={T.rightPanel}>
-            {hasMatch && (
-              <PlayerList
-                players={matchData.players}
-                selectedPlayer={filters.selectedPlayer}
-                onSelect={uid => updateFilters({ selectedPlayer: uid })}
-              />
-            )}
-            {zoneMode && <ZoneStats stats={zoneStats} onClear={() => setZoneStats(null)} />}
-          </aside>
-        )}
+        {/* RIGHT: Player list + zone stats — always rendered to keep grid stable */}
+        <aside style={T.rightPanel}>
+          {hasMatch && (
+            <PlayerList
+              players={matchData.players}
+              selectedPlayer={filters.selectedPlayer}
+              onSelect={uid => updateFilters({ selectedPlayer: uid })}
+            />
+          )}
+          {zoneMode && <ZoneStats stats={zoneStats} onClear={() => setZoneStats(null)} />}
+        </aside>
       </div>
     </div>
   )
@@ -363,22 +369,52 @@ export default function App() {
 
 // ── Shared components ────────────────────────────────────────────
 
-function ToolBtn({ active, onClick, icon, label, accent = '#60a5fa' }) {
+// Tooltip — shows on hover, auto-hides on mouse-out
+function Tooltip({ text, children }) {
+  const [show, setShow] = useState(false)
+  if (!text) return children
   return (
-    <button
-      style={{
-        display: 'flex', alignItems: 'center', gap: '6px',
-        padding: '6px 12px', borderRadius: '6px', cursor: 'pointer',
-        fontSize: '12px', fontWeight: 600, border: '1.5px solid',
-        transition: 'all 0.15s',
-        borderColor: active ? accent : '#1e2e47',
-        background:  active ? accent + '22' : 'transparent',
-        color:       active ? accent : '#475569',
-      }}
-      onClick={onClick}
+    <div style={{ position: 'relative', display: 'inline-flex' }}
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
     >
-      <span>{icon}</span><span>{label}</span>
-    </button>
+      {children}
+      {show && (
+        <div style={{
+          position: 'absolute', bottom: 'calc(100% + 8px)', left: '50%',
+          transform: 'translateX(-50%)',
+          background: '#0d1320', border: '1px solid #1e2e47', borderRadius: '7px',
+          padding: '8px 12px', fontSize: '11px', color: '#94a3b8',
+          maxWidth: '220px', width: 'max-content', zIndex: 1000,
+          pointerEvents: 'none', lineHeight: 1.55,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
+        }}>
+          {text}
+          <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '5px solid #1e2e47' }} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ToolBtn({ active, onClick, icon, label, accent = '#60a5fa', tip }) {
+  return (
+    <Tooltip text={tip}>
+      <button
+        style={{
+          display: 'flex', alignItems: 'center', gap: '6px',
+          padding: '6px 12px', borderRadius: '6px', cursor: 'pointer',
+          fontSize: '12px', fontWeight: 600, border: '1.5px solid',
+          transition: 'all 0.15s',
+          borderColor: active ? accent : '#1e2e47',
+          background:  active ? accent + '22' : 'transparent',
+          color:       active ? accent : '#475569',
+        }}
+        onClick={onClick}
+      >
+        <span>{icon}</span><span>{label}</span>
+      </button>
+    </Tooltip>
   )
 }
 
@@ -421,10 +457,10 @@ const T = {
   phaseTabs:     { display: 'flex', gap: '2px', background: '#0d1320', borderRadius: '7px', padding: '3px', border: '1px solid #1e2e47' },
   phaseTab:      { padding: '3px 9px', borderRadius: '5px', border: '1px solid', cursor: 'pointer', fontSize: '11px', fontWeight: 600, transition: 'all 0.12s' },
   ghostBtn:      { padding: '5px 10px', borderRadius: '6px', border: '1px dashed', cursor: 'pointer', fontSize: '11px', fontWeight: 500, transition: 'all 0.15s' },
-  main:          { display: 'flex', gap: '16px', padding: '16px 24px', flex: 1, minHeight: 0, overflow: 'hidden' },
-  aside:         { width: '220px', flexShrink: 0, overflowY: 'auto' },
-  center:        { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, alignItems: 'flex-start', overflowY: 'auto' },
-  rightPanel:    { width: '260px', flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' },
+  main:          { display: 'grid', gridTemplateColumns: '280px 1fr 280px', gap: '16px', padding: '16px 24px', flex: 1, minHeight: 0, overflow: 'hidden' },
+  aside:         { overflowY: 'auto', minWidth: 0 },
+  center:        { display: 'flex', flexDirection: 'column', minWidth: 0, alignItems: 'center', overflowY: 'auto' },
+  rightPanel:    { overflowY: 'auto', display: 'flex', flexDirection: 'column', minWidth: 0 },
   emptyState:    { maxWidth: '100%', background: '#0d1320', borderRadius: '12px', border: '1px dashed #1e2e47', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' },
   emptyIcon:     { fontSize: '40px', lineHeight: 1 },
   emptyText:     { fontSize: '14px', color: '#475569', textAlign: 'center', lineHeight: 1.6 },

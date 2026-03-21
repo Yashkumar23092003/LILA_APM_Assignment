@@ -55,12 +55,24 @@ export default function PlaybackBar({ maxTime, currentTime, isPlaying, speed, on
         />
       </div>
 
-      {/* Time display */}
-      <span style={S.time}>
-        <span style={S.timeVal}>{fmt(currentTime, maxTime)}</span>
+      {/* Scrubable time input — type a second to jump instantly */}
+      <div style={S.timeBlock}>
+        <input
+          type="number"
+          min={0}
+          max={30}
+          step={1}
+          value={Math.round((currentTime / maxTime) * 30)}
+          onChange={e => {
+            const sec = Math.max(0, Math.min(30, Number(e.target.value)))
+            onTimeChange((sec / 30) * maxTime)
+          }}
+          style={S.timeInput}
+          title="Type a second to jump to that point (0–30)"
+        />
         <span style={S.timeSep}>/</span>
-        <span style={S.timeTot}>{fmt(maxTime, maxTime)}</span>
-      </span>
+        <span style={S.timeTot}>30s</span>
+      </div>
 
       {/* Speed pills */}
       <div style={S.speedPills}>
@@ -109,8 +121,13 @@ const S = {
   fill:        { height: '100%', background: 'linear-gradient(90deg, #1d4ed8, #3b82f6)', borderRadius: '2px', transition: 'width 0.05s' },
   thumb:       { position: 'absolute', top: '50%', transform: 'translate(-50%, -50%)', width: 12, height: 12, borderRadius: '50%', background: '#60a5fa', border: '2px solid #080c14', boxShadow: '0 0 6px #3b82f688', transition: 'left 0.05s' },
   range:       { position: 'absolute', left: 0, right: 0, width: '100%', opacity: 0, cursor: 'pointer', height: '20px' },
-  time:        { display: 'flex', gap: '4px', alignItems: 'baseline', flexShrink: 0 },
-  timeVal:     { fontSize: '13px', fontFamily: 'monospace', color: '#60a5fa', fontWeight: 600 },
+  timeBlock:   { display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 },
+  timeInput:   {
+    width: '38px', textAlign: 'center', background: '#131c2e', border: '1px solid #1e2e47',
+    borderRadius: '5px', color: '#60a5fa', fontSize: '13px', fontWeight: 700,
+    fontFamily: 'monospace', padding: '2px 4px',
+    MozAppearance: 'textfield',
+  },
   timeSep:     { fontSize: '11px', color: '#2d4060' },
   timeTot:     { fontSize: '11px', fontFamily: 'monospace', color: '#334155' },
   speedPills:  { display: 'flex', gap: '3px', flexShrink: 0 },
