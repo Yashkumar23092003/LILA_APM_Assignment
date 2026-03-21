@@ -369,52 +369,73 @@ export default function App() {
 
 // ── Shared components ────────────────────────────────────────────
 
-// Tooltip — shows on hover, auto-hides on mouse-out
-function Tooltip({ text, children }) {
+// HelpBadge — a small persistent "?" circle that reveals a tooltip on hover.
+// Placed INSIDE buttons so users always see there's help available.
+function HelpBadge({ text }) {
   const [show, setShow] = useState(false)
-  if (!text) return children
+  if (!text) return null
   return (
-    <div style={{ position: 'relative', display: 'inline-flex' }}
-      onMouseEnter={() => setShow(true)}
+    <span
+      style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', marginLeft: '3px', flexShrink: 0 }}
+      onMouseEnter={e => { e.stopPropagation(); setShow(true) }}
       onMouseLeave={() => setShow(false)}
     >
-      {children}
+      {/* The "?" circle */}
+      <span style={{
+        width: 14, height: 14, borderRadius: '50%',
+        background: show ? '#1e3a5f' : '#111827',
+        color: show ? '#93c5fd' : '#3d5580',
+        fontSize: '9px', fontWeight: 800,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'default', border: '1px solid',
+        borderColor: show ? '#3b82f6' : '#1e2e47',
+        transition: 'all 0.12s',
+        lineHeight: 1, userSelect: 'none',
+      }}>?</span>
+
+      {/* Tooltip popup — opens BELOW the badge so it stays inside the viewport */}
       {show && (
         <div style={{
-          position: 'absolute', bottom: 'calc(100% + 8px)', left: '50%',
+          position: 'absolute', top: 'calc(100% + 10px)', left: '50%',
           transform: 'translateX(-50%)',
-          background: '#0d1320', border: '1px solid #1e2e47', borderRadius: '7px',
-          padding: '8px 12px', fontSize: '11px', color: '#94a3b8',
-          maxWidth: '220px', width: 'max-content', zIndex: 1000,
-          pointerEvents: 'none', lineHeight: 1.55,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
+          background: '#0d1320', border: '1px solid #2d4060', borderRadius: '8px',
+          padding: '9px 13px', fontSize: '11px', color: '#94a3b8',
+          maxWidth: '230px', width: 'max-content', zIndex: 2000,
+          pointerEvents: 'none', lineHeight: 1.6,
+          boxShadow: '0 6px 24px rgba(0,0,0,0.7)',
+          whiteSpace: 'normal',
         }}>
+          {/* Caret pointing UP toward the badge */}
+          <div style={{
+            position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
+            borderLeft: '5px solid transparent', borderRight: '5px solid transparent',
+            borderBottom: '5px solid #2d4060',
+          }} />
           {text}
-          <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '5px solid #1e2e47' }} />
         </div>
       )}
-    </div>
+    </span>
   )
 }
 
 function ToolBtn({ active, onClick, icon, label, accent = '#60a5fa', tip }) {
   return (
-    <Tooltip text={tip}>
-      <button
-        style={{
-          display: 'flex', alignItems: 'center', gap: '6px',
-          padding: '6px 12px', borderRadius: '6px', cursor: 'pointer',
-          fontSize: '12px', fontWeight: 600, border: '1.5px solid',
-          transition: 'all 0.15s',
-          borderColor: active ? accent : '#1e2e47',
-          background:  active ? accent + '22' : 'transparent',
-          color:       active ? accent : '#475569',
-        }}
-        onClick={onClick}
-      >
-        <span>{icon}</span><span>{label}</span>
-      </button>
-    </Tooltip>
+    <button
+      style={{
+        display: 'flex', alignItems: 'center', gap: '6px',
+        padding: '6px 12px', borderRadius: '6px', cursor: 'pointer',
+        fontSize: '12px', fontWeight: 600, border: '1.5px solid',
+        transition: 'all 0.15s', position: 'relative',
+        borderColor: active ? accent : '#1e2e47',
+        background:  active ? accent + '22' : 'transparent',
+        color:       active ? accent : '#475569',
+      }}
+      onClick={onClick}
+    >
+      <span>{icon}</span>
+      <span>{label}</span>
+      <HelpBadge text={tip} />
+    </button>
   )
 }
 
