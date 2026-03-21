@@ -6,6 +6,7 @@ import PlayerList from './components/PlayerList.jsx'
 import ZoneStats from './components/ZoneStats.jsx'
 import ZoneScorecard from './components/ZoneScorecard.jsx'
 import Guide from './components/Guide.jsx'
+import BuiltBy from './components/BuiltBy.jsx'
 
 const DEFAULT_FILTERS = {
   selectedMap: 'AmbroseValley',
@@ -63,7 +64,8 @@ export default function App() {
   const [flowVectorData, setFlowVectorData] = useState(null)
 
   const [loading, setLoading] = useState(false)
-  const [showGuide, setShowGuide] = useState(() => !localStorage.getItem('lila_guide_seen'))
+  const [showGuide,  setShowGuide]  = useState(() => !localStorage.getItem('lila_guide_seen'))
+  const [showBuiltBy, setShowBuiltBy] = useState(() => !localStorage.getItem('lila_builtby_seen'))
 
   useLayoutEffect(() => {
     const update = () => setCanvasSize(computeCanvasSize())
@@ -139,9 +141,16 @@ export default function App() {
     setShowGuide(false)
   }
 
+
+  const handleCloseBuiltBy = () => {
+    localStorage.setItem('lila_builtby_seen', '1')
+    setShowBuiltBy(false)
+  }
+
   return (
     <div style={T.app}>
-      {showGuide && <Guide onClose={handleCloseGuide} />}
+      {showBuiltBy && <BuiltBy onClose={handleCloseBuiltBy} />}
+      {!showBuiltBy && showGuide && <Guide onClose={handleCloseGuide} />}
       {/* ── HEADER ─────────────────────────────────────────────────── */}
       <header style={T.header}>
 
