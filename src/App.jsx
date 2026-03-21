@@ -448,22 +448,24 @@ function HelpBadge({ text }) {
 
 function ToolBtn({ active, onClick, icon, label, accent = '#60a5fa', tip }) {
   return (
-    <button
-      style={{
-        display: 'flex', alignItems: 'center', gap: '6px',
-        padding: '6px 12px', borderRadius: '6px', cursor: 'pointer',
-        fontSize: '12px', fontWeight: 600, border: '1.5px solid',
-        transition: 'all 0.15s', position: 'relative',
-        borderColor: active ? accent : '#1e2e47',
-        background:  active ? accent + '22' : 'transparent',
-        color:       active ? accent : '#475569',
-      }}
-      onClick={onClick}
-    >
-      <span>{icon}</span>
-      <span>{label}</span>
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
+      <button
+        style={{
+          display: 'flex', alignItems: 'center', gap: '6px',
+          padding: '6px 10px', borderRadius: '6px', cursor: 'pointer',
+          fontSize: '12px', fontWeight: 600, border: '1.5px solid',
+          transition: 'all 0.15s',
+          borderColor: active ? accent : '#1e2e47',
+          background:  active ? accent + '22' : 'transparent',
+          color:       active ? accent : '#475569',
+        }}
+        onClick={onClick}
+      >
+        <span>{icon}</span>
+        <span>{label}</span>
+      </button>
       <HelpBadge text={tip} />
-    </button>
+    </div>
   )
 }
 
@@ -499,7 +501,7 @@ const T = {
   matchPill:     { display: 'flex', alignItems: 'center', gap: '8px', background: '#0d1320', border: '1px solid #1e2e47', borderRadius: '20px', padding: '5px 12px', flexShrink: 1, minWidth: 0, overflow: 'hidden' },
   mapBadge:      { fontSize: '11px', fontWeight: 700, background: '#1e2e47', color: '#60a5fa', borderRadius: '4px', padding: '2px 6px' },
   pillText:      { fontSize: '12px', color: '#64748b' },
-  controls:      { display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'nowrap', overflowX: 'auto', flexShrink: 1 },
+  controls:      { display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'nowrap', flexShrink: 1, overflow: 'visible' },
   ctrlGroup:     { display: 'flex', gap: '4px', padding: '0 6px', borderLeft: '1px solid #1e2e47' },
   ctrlGroupGhost:{ display: 'flex', gap: '4px', padding: '0 6px', borderLeft: '1px solid #131c2e', marginLeft: '2px' },
   catSelect:     { background: '#0d1320', border: '1px solid #1e2e47', color: '#a78bfa', borderRadius: '6px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer' },
