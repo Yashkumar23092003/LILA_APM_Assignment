@@ -5,6 +5,7 @@ import PlaybackBar from './components/PlaybackBar.jsx'
 import PlayerList from './components/PlayerList.jsx'
 import ZoneStats from './components/ZoneStats.jsx'
 import ZoneScorecard from './components/ZoneScorecard.jsx'
+import Guide from './components/Guide.jsx'
 
 const DEFAULT_FILTERS = {
   selectedMap: 'AmbroseValley',
@@ -62,6 +63,7 @@ export default function App() {
   const [flowVectorData, setFlowVectorData] = useState(null)
 
   const [loading, setLoading] = useState(false)
+  const [showGuide, setShowGuide] = useState(() => !localStorage.getItem('lila_guide_seen'))
 
   useLayoutEffect(() => {
     const update = () => setCanvasSize(computeCanvasSize())
@@ -132,8 +134,14 @@ export default function App() {
   // Effective heatmap type: includes 'landing' as a first-drop option
   const effectiveHeatType = heatmapType
 
+  const handleCloseGuide = () => {
+    localStorage.setItem('lila_guide_seen', '1')
+    setShowGuide(false)
+  }
+
   return (
     <div style={T.app}>
+      {showGuide && <Guide onClose={handleCloseGuide} />}
       {/* ── HEADER ─────────────────────────────────────────────────── */}
       <header style={T.header}>
 
@@ -246,7 +254,7 @@ export default function App() {
               <Dot/><span style={{ ...T.pillText, color:'#f472b6' }}>🤖 {matchData.bot_count}</span>
             </div>
           )}
-          <button style={T.guideBtn}>📖 Guide</button>
+          <button style={T.guideBtn} onClick={() => setShowGuide(true)}>📖 Guide</button>
         </div>
 
       </header>
