@@ -136,6 +136,8 @@ export default function App() {
     <div style={T.app}>
       {/* ── HEADER ─────────────────────────────────────────────────── */}
       <header style={T.header}>
+
+        {/* LEFT: Brand */}
         <div style={T.brand}>
           <div style={T.brandIcon}>▲</div>
           <div>
@@ -144,16 +146,7 @@ export default function App() {
           </div>
         </div>
 
-        {matchData && (
-          <div style={T.matchPill}>
-            <span style={T.mapBadge}>{matchData.map_id}</span>
-            <Dot/><span style={T.pillText}>{matchData.date?.replace('_',' ')}</span>
-            <Dot/><span style={{ ...T.pillText, color:'#60a5fa' }}>👤 {matchData.human_count}</span>
-            <Dot/><span style={{ ...T.pillText, color:'#f472b6' }}>🤖 {matchData.bot_count}</span>
-            <Dot/><span style={{ ...T.pillText, color:'#94a3b8' }}>⚡ {matchData.total_events}</span>
-          </div>
-        )}
-
+        {/* CENTRE: Nav dropdowns */}
         <div style={T.controls}>
 
           {/* ── Visualise dropdown ── */}
@@ -242,6 +235,20 @@ export default function App() {
           </NavDropdown>
 
         </div>
+
+        {/* RIGHT: Match pill + Guide */}
+        <div style={T.headerRight}>
+          {matchData && (
+            <div style={T.matchPill}>
+              <span style={T.mapBadge}>{matchData.map_id}</span>
+              <Dot/><span style={T.pillText}>{matchData.date?.replace('_',' ')}</span>
+              <Dot/><span style={{ ...T.pillText, color:'#60a5fa' }}>👤 {matchData.human_count}</span>
+              <Dot/><span style={{ ...T.pillText, color:'#f472b6' }}>🤖 {matchData.bot_count}</span>
+            </div>
+          )}
+          <button style={T.guideBtn}>📖 Guide</button>
+        </div>
+
       </header>
 
       {/* ── MAIN LAYOUT ────────────────────────────────────────────── */}
@@ -522,7 +529,7 @@ function Spinner() {
 
 const T = {
   app:           { height: '100vh', overflow: 'hidden', background: '#080c14', color: '#e2e8f0', fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif", display: 'flex', flexDirection: 'column' },
-  header:        { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', minHeight: '60px', borderBottom: '1px solid #1e2e47', gap: '8px', flexShrink: 0, flexWrap: 'nowrap', overflow: 'visible' },
+  header:        { display: 'flex', alignItems: 'center', padding: '0 24px', minHeight: '60px', borderBottom: '1px solid #1e2e47', flexShrink: 0, overflow: 'visible' },
   brand:         { display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 },
   brandIcon:     { width: 28, height: 28, background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', color: '#fff', fontWeight: 700 },
   brandName:     { fontSize: '15px', fontWeight: 700, color: '#f1f5f9', lineHeight: 1.2 },
@@ -530,7 +537,9 @@ const T = {
   matchPill:     { display: 'flex', alignItems: 'center', gap: '8px', background: '#0d1320', border: '1px solid #1e2e47', borderRadius: '20px', padding: '5px 12px', flexShrink: 1, minWidth: 0, overflow: 'hidden' },
   mapBadge:      { fontSize: '11px', fontWeight: 700, background: '#1e2e47', color: '#60a5fa', borderRadius: '4px', padding: '2px 6px' },
   pillText:      { fontSize: '12px', color: '#64748b' },
-  controls:      { display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'nowrap', flexShrink: 1, overflow: 'visible' },
+  controls:      { display: 'flex', alignItems: 'center', gap: '50px', flex: 1, justifyContent: 'center', overflow: 'visible' },
+  headerRight:   { display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 },
+  guideBtn:      { display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 13px', borderRadius: '6px', border: '1.5px solid #1e2e47', background: 'transparent', color: '#64748b', fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' },
   ctrlGroup:     { display: 'flex', gap: '4px', padding: '0 6px', borderLeft: '1px solid #1e2e47' },
   ctrlGroupGhost:{ display: 'flex', gap: '4px', padding: '0 6px', borderLeft: '1px solid #131c2e', marginLeft: '2px' },
   catSelect:     { background: '#0d1320', border: '1px solid #1e2e47', color: '#a78bfa', borderRadius: '6px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer' },
