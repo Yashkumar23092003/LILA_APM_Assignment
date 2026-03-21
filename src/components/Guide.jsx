@@ -319,7 +319,7 @@ function AnimPhase() {
 const CARDS = [
   { id:'what',    icon:'🗺️',  title:'What is this?',          group:'Overview',
     short:'A visual tool for Level Designers to understand player behaviour in LILA BLACK.',
-    full:'LILA Journey Viewer lets you load any match from 796 recorded games and watch how players moved, fought, and died across your maps. It's built specifically for level design review — not stats dashboards. You're here to ask: are players using my map the way I designed it?',
+    full:'LILA Journey Viewer lets you load any match from 796 recorded games and watch how players moved, fought, and died across your maps. It\'s built specifically for level design review — not stats dashboards. You\'re here to ask: are players using my map the way I designed it?',
     Anim: AnimWhat },
   { id:'map',     icon:'🗺️',  title:'Map Filter',              group:'Filters',
     short:'Switch between AmbroseValley, GrandRift, and Lockdown.',
