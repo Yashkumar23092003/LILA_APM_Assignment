@@ -4,6 +4,7 @@ import FilterPanel from './components/FilterPanel.jsx'
 import PlaybackBar from './components/PlaybackBar.jsx'
 import PlayerList from './components/PlayerList.jsx'
 import ZoneStats from './components/ZoneStats.jsx'
+import ZoneScorecard from './components/ZoneScorecard.jsx'
 
 const DEFAULT_FILTERS = {
   selectedMap: 'AmbroseValley',
@@ -15,36 +16,52 @@ const DEFAULT_FILTERS = {
   activeEvents: ['Kill','Killed','BotKill','BotKilled','KilledByStorm','Loot'],
 }
 
-// Compute optimal square canvas size using BOTH viewport width and height
 function computeCanvasSize() {
-  const LEFT_W  = 220   // filter sidebar
-  const RIGHT_W = 260   // player panel
-  const H_PAD   = 24 * 2 + 16 * 2  // outer padding + gaps
-  const V_PAD   = 60 + 70 + 36 + 24 // header + playback + stats + padding
-  const availW = window.innerWidth  - LEFT_W - RIGHT_W - H_PAD
-  const availH = window.innerHeight - V_PAD
+  const LEFT_W  = 220
+  const RIGHT_W = 260
+  const H_PAD   = 24 * 2 + 16 * 2
+  const V_PAD   = 60 + 70 + 36 + 24
+  const availW  = window.innerWidth  - LEFT_W - RIGHT_W - H_PAD
+  const availH  = window.innerHeight - V_PAD
   return Math.min(Math.max(Math.min(availW, availH), 320), 840)
 }
 
 export default function App() {
-  const [matchList,   setMatchList]   = useState([])
-  const [matchData,   setMatchData]   = useState(null)
-  const [filters,     setFilters]     = useState(DEFAULT_FILTERS)
-  const [playbackTime,setPlaybackTime]= useState(Infinity)
-  const [isPlaying,   setIsPlaying]   = useState(false)
-  const [speed,       setSpeed]       = useState(1)
-  const [heatmapMode, setHeatmapMode] = useState(false)
-  const [heatmapType, setHeatmapType] = useState('position')
-  const [showPaths,   setShowPaths]   = useState(true)
-  const [loading,       setLoading]       = useState(false)
-  const [canvasSize,    setCanvasSize]    = useState(600)
-  const [showClusters,  setShowClusters]  = useState(false)   // F2 — opt-in toggle
+  const [matchList,    setMatchList]    = useState([])
+  const [matchData,    setMatchData]    = useState(null)
+  const [filters,      setFilters]      = useState(DEFAULT_FILTERS)
+  const [playbackTime, setPlaybackTime] = useState(Infinity)
+  const [isPlaying,    setIsPlaying]    = useState(false)
+  const [speed,        setSpeed]        = useState(1)
+  const [canvasSize,   setCanvasSize]   = useState(600)
 
-  const [aggregateMode, setAggregateMode] = useState(false)
-  const [aggregateData, setAggregateData] = useState(null)
-  const [aggLoading,    setAggLoading]    = useState(false)
-  const [zoneMode,      setZoneMode]      = useState(false)   // F3 — power-user tool
-  const [zoneStats,     setZoneStats]     = useState(null)
+  // ── Layer toggles ───────────────────────────────────────────────
+  const [showPaths,      setShowPaths]      = useState(true)
+  const [heatmapMode,    setHeatmapMode]    = useState(false)
+  const [heatmapType,    setHeatmapType]    = useState('position')
+  const [phaseMode,      setPhaseMode]      = useState('all')   // F#3 phase split
+  const [showClusters,   setShowClusters]   = useState(false)   // F2 opt-in
+  const [showDeadZones,  setShowDeadZones]  = useState(false)   // F#4
+  const [showFlowVectors,setShowFlowVectors]= useState(false)   // F#5
+
+  // ── Cross-match aggregate ───────────────────────────────────────
+  const [aggregateMode,  setAggregateMode]  = useState(false)
+  const [aggregateData,  setAggregateData]  = useState(null)
+  const [aggLoading,     setAggLoading]     = useState(false)
+
+  // ── Zone draw (advanced) ────────────────────────────────────────
+  const [zoneMode,  setZoneMode]  = useState(false)
+  const [zoneStats, setZoneStats] = useState(null)
+
+  // ── Zone Balance Scorecard (F#1) ────────────────────────────────
+  const [showScorecard,   setShowScorecard]   = useState(false)
+  const [scorecardData,   setScorecardData]   = useState(null)
+  const [scorecardLoading,setScorecardLoading]= useState(false)
+
+  // ── Flow vector data (F#5) ──────────────────────────────────────
+  const [flowVectorData, setFlowVectorData] = useState(null)
+
+  const [loading, setLoading] = useState(false)
 
   useLayoutEffect(() => {
     const update = () => setCanvasSize(computeCanvasSize())
@@ -66,6 +83,7 @@ export default function App() {
       .catch(e => { console.error(e); setLoading(false) })
   }, [filters.selectedMatch])
 
+  // Load aggregate data
   useEffect(() => {
     const mapId = filters.selectedMap || matchData?.map_id
     if (!aggregateMode || !mapId) return
@@ -75,10 +93,32 @@ export default function App() {
       .then(data => { setAggregateData(data); setAggLoading(false) })
       .catch(e => { console.error(e); setAggLoading(false) })
   }, [aggregateMode, filters.selectedMap, matchData?.map_id])
-
   useEffect(() => { if (!aggregateMode) setAggregateData(null) }, [aggregateMode])
 
-  const updateFilters = useCallback(changes => setFilters(prev => ({ ...prev, ...changes })), [])
+  // Load zone scorecard data
+  useEffect(() => {
+    const mapId = filters.selectedMap || matchData?.map_id
+    if (!showScorecard || !mapId) return
+    setScorecardLoading(true)
+    fetch(`./data/zone_scorecard_${mapId}.json`)
+      .then(r => r.json())
+      .then(data => { setScorecardData(data); setScorecardLoading(false) })
+      .catch(e => { console.error(e); setScorecardLoading(false) })
+  }, [showScorecard, filters.selectedMap, matchData?.map_id])
+  useEffect(() => { if (!showScorecard) setScorecardData(null) }, [showScorecard])
+
+  // Load flow vector data
+  useEffect(() => {
+    const mapId = filters.selectedMap || matchData?.map_id
+    if (!showFlowVectors || !mapId) return
+    fetch(`./data/flow_vectors_${mapId}.json`)
+      .then(r => r.json())
+      .then(setFlowVectorData)
+      .catch(console.error)
+  }, [showFlowVectors, filters.selectedMap, matchData?.map_id])
+  useEffect(() => { if (!showFlowVectors) setFlowVectorData(null) }, [showFlowVectors])
+
+  const updateFilters  = useCallback(changes => setFilters(prev => ({ ...prev, ...changes })), [])
   const handleZoneSelect = useCallback(stats => setZoneStats(stats), [])
 
   const maxTime = matchData
@@ -86,9 +126,11 @@ export default function App() {
     : 10000
 
   const activeMapId = filters.selectedMap || matchData?.map_id || '—'
-
   const hasMatch    = !!matchData && !loading
   const showAggOnly = aggregateMode && !filters.selectedMatch
+
+  // Effective heatmap type: includes 'landing' as a first-drop option
+  const effectiveHeatType = heatmapType
 
   return (
     <div style={T.app}>
@@ -98,73 +140,103 @@ export default function App() {
           <div style={T.brandIcon}>▲</div>
           <div>
             <div style={T.brandName}>LILA Journey Viewer</div>
-            <div style={T.brandSub}>LILA BLACK · Telemetry Explorer</div>
+            <div style={T.brandSub}>LILA BLACK · Level Design Tool</div>
           </div>
         </div>
 
-        {/* Match context pill */}
         {matchData && (
           <div style={T.matchPill}>
             <span style={T.mapBadge}>{matchData.map_id}</span>
-            <span style={T.pilldot}></span>
-            <span style={T.pillText}>{matchData.date?.replace('_',' ')}</span>
-            <span style={T.pilldot}></span>
-            <span style={{ ...T.pillText, color: '#60a5fa' }}>👤 {matchData.human_count}</span>
-            <span style={T.pilldot}></span>
-            <span style={{ ...T.pillText, color: '#f472b6' }}>🤖 {matchData.bot_count}</span>
-            <span style={T.pilldot}></span>
-            <span style={{ ...T.pillText, color: '#94a3b8' }}>⚡ {matchData.total_events}</span>
+            <Dot/><span style={T.pillText}>{matchData.date?.replace('_',' ')}</span>
+            <Dot/><span style={{ ...T.pillText, color:'#60a5fa' }}>👤 {matchData.human_count}</span>
+            <Dot/><span style={{ ...T.pillText, color:'#f472b6' }}>🤖 {matchData.bot_count}</span>
+            <Dot/><span style={{ ...T.pillText, color:'#94a3b8' }}>⚡ {matchData.total_events}</span>
           </div>
         )}
 
-        {/* Layer + tool controls */}
         <div style={T.controls}>
-          {/* Primary layer tools */}
+          {/* Primary layers */}
           <div style={T.ctrlGroup}>
-            <ToolBtn active={showPaths} onClick={() => setShowPaths(v => !v)} icon="🛤" label="Paths" />
+            <ToolBtn active={showPaths} onClick={() => setShowPaths(v=>!v)} icon="🛤" label="Paths" />
             <ToolBtn
               active={heatmapMode && !aggregateMode}
-              onClick={() => { setHeatmapMode(v => !v); setAggregateMode(false) }}
+              onClick={() => { setHeatmapMode(v=>!v); setAggregateMode(false) }}
               icon="🌡" label="Heatmap"
             />
             <ToolBtn
               active={aggregateMode}
-              onClick={() => { setAggregateMode(v => !v); setHeatmapMode(false) }}
+              onClick={() => { setAggregateMode(v=>!v); setHeatmapMode(false) }}
               icon="📊" label="Cross-Match"
               accent="#a78bfa"
             />
           </div>
 
+          {/* Heatmap type selector */}
           {(heatmapMode || aggregateMode) && (
-            <select style={T.catSelect} value={heatmapType} onChange={e => setHeatmapType(e.target.value)}>
-              <option value="position">Position</option>
-              <option value="kills">Kills</option>
-              <option value="deaths">Deaths</option>
-              <option value="loot">Loot</option>
+            <select style={T.catSelect} value={heatmapType} onChange={e => { setHeatmapType(e.target.value); setPhaseMode('all') }}>
+              <optgroup label="Standard">
+                <option value="position">Position density</option>
+                <option value="kills">Kill zones</option>
+                <option value="deaths">Death zones</option>
+                <option value="loot">Loot zones</option>
+              </optgroup>
+              {heatmapMode && !aggregateMode && (
+                <optgroup label="Special">
+                  <option value="landing">🪂 Landing / First drop</option>
+                </optgroup>
+              )}
             </select>
           )}
 
-          {/* Secondary analysis toggle — F2 clusters as explicit opt-in */}
+          {/* Phase tabs — only when single-match heatmap is on */}
+          {heatmapMode && !aggregateMode && heatmapType !== 'landing' && (
+            <div style={T.phaseTabs}>
+              {(['all','early','mid','late']).map(p => (
+                <button
+                  key={p}
+                  style={{ ...T.phaseTab, background: phaseMode === p ? '#1d4ed8' : 'transparent', color: phaseMode === p ? '#93c5fd' : '#334155', borderColor: phaseMode === p ? '#3b82f6' : '#1a2333' }}
+                  onClick={() => setPhaseMode(p)}
+                >
+                  {{ all:'All', early:'Early', mid:'Mid', late:'Late' }[p]}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Analysis overlays */}
           <div style={T.ctrlGroup}>
             <ToolBtn
+              active={showScorecard}
+              onClick={() => setShowScorecard(v=>!v)}
+              icon="⬡" label="Scorecard"
+              accent="#10b981"
+            />
+            <ToolBtn
               active={showClusters}
-              onClick={() => setShowClusters(v => !v)}
+              onClick={() => setShowClusters(v=>!v)}
               icon="🔴" label="Clusters"
               accent="#ef4444"
             />
+            <ToolBtn
+              active={showDeadZones}
+              onClick={() => setShowDeadZones(v=>!v)}
+              icon="☠" label="Dead zones"
+              accent="#ef4444"
+            />
+            <ToolBtn
+              active={showFlowVectors}
+              onClick={() => setShowFlowVectors(v=>!v)}
+              icon="↗" label="Flow"
+              accent="#fb923c"
+            />
           </div>
 
-          {/* Power-user / advanced — F3 zone tool, visually demoted */}
+          {/* Advanced / power-user */}
           <div style={T.ctrlGroupGhost}>
             <button
-              style={{
-                ...T.ghostBtn,
-                borderColor: zoneMode ? '#475569' : '#1a2333',
-                color:       zoneMode ? '#94a3b8' : '#2d4060',
-                background:  zoneMode ? '#1e2e4722' : 'transparent',
-              }}
-              onClick={() => { setZoneMode(v => !v); if (zoneMode) setZoneStats(null) }}
-              title="Advanced: drag a zone rectangle on the map to compute area stats"
+              style={{ ...T.ghostBtn, borderColor: zoneMode ? '#475569' : '#1a2333', color: zoneMode ? '#94a3b8' : '#2d4060', background: zoneMode ? '#1e2e4722' : 'transparent' }}
+              onClick={() => { setZoneMode(v=>!v); if (zoneMode) setZoneStats(null) }}
+              title="Advanced: drag to select a zone and compute area stats"
             >
               🎯 Zone analysis
             </button>
@@ -180,7 +252,7 @@ export default function App() {
           <FilterPanel filters={filters} onChange={updateFilters} matchList={matchList} />
         </aside>
 
-        {/* CENTER: Canvas + Playback */}
+        {/* CENTER: Canvas + Playback + Scorecard */}
         <div style={T.center}>
           {showAggOnly ? (
             aggLoading ? (
@@ -190,15 +262,17 @@ export default function App() {
             ) : aggregateData ? (
               <MapCanvas
                 matchData={null} filters={filters} playbackTime={Infinity}
-                heatmapMode={false} heatmapType={heatmapType}
+                heatmapMode={false} heatmapType={heatmapType} phaseMode="all"
                 aggregateMode={aggregateMode} aggregateData={aggregateData}
                 showPaths={false} canvasSize={canvasSize}
-                showClusters={false} zoneMode={false} onZoneSelect={handleZoneSelect}
+                showClusters={false} showDeadZones={false}
+                showFlowVectors={showFlowVectors} flowVectorData={flowVectorData}
+                zoneMode={false} onZoneSelect={handleZoneSelect}
               />
             ) : (
               <div style={{ ...T.emptyState, width: canvasSize, height: canvasSize }}>
                 <div style={T.emptyIcon}>📊</div>
-                <p style={T.emptyText}>Select a map to load<br/>cross-match aggregate</p>
+                <p style={T.emptyText}>Select a map to load cross-match data</p>
               </div>
             )
           ) : !filters.selectedMatch ? (
@@ -214,19 +288,29 @@ export default function App() {
           ) : (
             <MapCanvas
               matchData={matchData} filters={filters} playbackTime={playbackTime}
-              heatmapMode={heatmapMode && !aggregateMode} heatmapType={heatmapType}
+              heatmapMode={heatmapMode && !aggregateMode} heatmapType={effectiveHeatType}
+              phaseMode={phaseMode}
               aggregateMode={aggregateMode} aggregateData={aggregateData}
               showPaths={showPaths} canvasSize={canvasSize}
-              showClusters={showClusters}
+              showClusters={showClusters} showDeadZones={showDeadZones}
+              showFlowVectors={showFlowVectors} flowVectorData={flowVectorData}
               zoneMode={zoneMode} onZoneSelect={handleZoneSelect}
             />
           )}
 
-          {zoneMode && !hasMatch && aggregateMode && (
-            <p style={T.hint}>Load a match to use zone analysis</p>
-          )}
           {zoneMode && hasMatch && (
-            <p style={T.hint}>🎯 Drag a rectangle on the map to analyse that area</p>
+            <p style={T.hint}>🎯 Drag a rectangle to analyse that area</p>
+          )}
+
+          {/* Zone Balance Scorecard — below map */}
+          {showScorecard && (
+            scorecardLoading ? (
+              <div style={{ ...T.aggStrip, alignItems: 'center', gap: '10px', marginTop: 12 }}>
+                <Spinner /> <span style={{ fontSize: '12px', color: '#475569' }}>Loading scorecard for {activeMapId}…</span>
+              </div>
+            ) : (
+              <ZoneScorecard scorecardData={scorecardData} visible={showScorecard} />
+            )
           )}
 
           {/* Playback bar */}
@@ -240,7 +324,7 @@ export default function App() {
                 onTimeChange={setPlaybackTime}
                 onPlayPause={() => {
                   if (playbackTime === Infinity || playbackTime >= maxTime) setPlaybackTime(0)
-                  setIsPlaying(v => !v)
+                  setIsPlaying(v=>!v)
                 }}
                 onSpeedChange={setSpeed}
               />
@@ -255,12 +339,11 @@ export default function App() {
               <AggPill color="#60a5fa" icon="📍" label={`${aggregateData.categories.position.length.toLocaleString()} positions`} />
               <AggPill color="#ef4444" icon="⚔️" label={`${aggregateData.categories.kills.length} kills`} />
               <AggPill color="#f59e0b" icon="💀" label={`${aggregateData.categories.deaths.length} deaths`} />
-              <AggPill color="#10b981" icon="🎁" label={`${aggregateData.categories.loot.length} loot`} />
             </div>
           )}
         </div>
 
-        {/* RIGHT: Player list + stats */}
+        {/* RIGHT: Player list + zone stats */}
         {(hasMatch || (aggregateMode && aggregateData)) && (
           <aside style={T.rightPanel}>
             {hasMatch && (
@@ -278,7 +361,7 @@ export default function App() {
   )
 }
 
-// ── Shared small components ─────────────────────────────────────
+// ── Shared components ────────────────────────────────────────────
 
 function ToolBtn({ active, onClick, icon, label, accent = '#60a5fa' }) {
   return (
@@ -294,10 +377,13 @@ function ToolBtn({ active, onClick, icon, label, accent = '#60a5fa' }) {
       }}
       onClick={onClick}
     >
-      <span>{icon}</span>
-      <span>{label}</span>
+      <span>{icon}</span><span>{label}</span>
     </button>
   )
+}
+
+function Dot() {
+  return <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#2d3f5a', display: 'inline-block' }} />
 }
 
 function AggPill({ color, icon, label }) {
@@ -316,38 +402,33 @@ function Spinner() {
   )
 }
 
-// ── Theme tokens ────────────────────────────────────────────────
+// ── Theme tokens ─────────────────────────────────────────────────
 
 const T = {
-  app:       { height: '100vh', overflow: 'hidden', background: '#080c14', color: '#e2e8f0', fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif", display: 'flex', flexDirection: 'column' },
-
-  header:    { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', height: '60px', borderBottom: '1px solid #1e2e47', gap: '16px', flexShrink: 0 },
-  brand:     { display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 },
-  brandIcon: { width: 28, height: 28, background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', color: '#fff', fontWeight: 700 },
-  brandName: { fontSize: '15px', fontWeight: 700, color: '#f1f5f9', lineHeight: 1.2 },
-  brandSub:  { fontSize: '11px', color: '#334155', lineHeight: 1.2 },
-
-  matchPill: { display: 'flex', alignItems: 'center', gap: '10px', background: '#0d1320', border: '1px solid #1e2e47', borderRadius: '20px', padding: '5px 14px', flexShrink: 0 },
-  mapBadge:  { fontSize: '11px', fontWeight: 700, background: '#1e2e47', color: '#60a5fa', borderRadius: '4px', padding: '2px 6px' },
-  pilldot:   { width: 3, height: 3, borderRadius: '50%', background: '#2d3f5a', display: 'inline-block' },
-  pillText:  { fontSize: '12px', color: '#64748b' },
-
-  controls:      { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
-  ctrlGroup:     { display: 'flex', gap: '6px', padding: '0 4px', borderLeft: '1px solid #1e2e47' },
-  ctrlGroupGhost:{ display: 'flex', gap: '6px', padding: '0 4px', borderLeft: '1px solid #131c2e', marginLeft: '4px' },
+  app:           { height: '100vh', overflow: 'hidden', background: '#080c14', color: '#e2e8f0', fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif", display: 'flex', flexDirection: 'column' },
+  header:        { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', height: '60px', borderBottom: '1px solid #1e2e47', gap: '16px', flexShrink: 0, flexWrap: 'wrap' },
+  brand:         { display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 },
+  brandIcon:     { width: 28, height: 28, background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', color: '#fff', fontWeight: 700 },
+  brandName:     { fontSize: '15px', fontWeight: 700, color: '#f1f5f9', lineHeight: 1.2 },
+  brandSub:      { fontSize: '11px', color: '#334155', lineHeight: 1.2 },
+  matchPill:     { display: 'flex', alignItems: 'center', gap: '10px', background: '#0d1320', border: '1px solid #1e2e47', borderRadius: '20px', padding: '5px 14px', flexShrink: 0 },
+  mapBadge:      { fontSize: '11px', fontWeight: 700, background: '#1e2e47', color: '#60a5fa', borderRadius: '4px', padding: '2px 6px' },
+  pillText:      { fontSize: '12px', color: '#64748b' },
+  controls:      { display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' },
+  ctrlGroup:     { display: 'flex', gap: '4px', padding: '0 6px', borderLeft: '1px solid #1e2e47' },
+  ctrlGroupGhost:{ display: 'flex', gap: '4px', padding: '0 6px', borderLeft: '1px solid #131c2e', marginLeft: '2px' },
   catSelect:     { background: '#0d1320', border: '1px solid #1e2e47', color: '#a78bfa', borderRadius: '6px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer' },
+  phaseTabs:     { display: 'flex', gap: '2px', background: '#0d1320', borderRadius: '7px', padding: '3px', border: '1px solid #1e2e47' },
+  phaseTab:      { padding: '3px 9px', borderRadius: '5px', border: '1px solid', cursor: 'pointer', fontSize: '11px', fontWeight: 600, transition: 'all 0.12s' },
   ghostBtn:      { padding: '5px 10px', borderRadius: '6px', border: '1px dashed', cursor: 'pointer', fontSize: '11px', fontWeight: 500, transition: 'all 0.15s' },
-
-  main:      { display: 'flex', gap: '16px', padding: '16px 24px', flex: 1, minHeight: 0, overflow: 'hidden' },
-  aside:     { width: '220px', flexShrink: 0, overflowY: 'auto' },
-  center:    { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, alignItems: 'flex-start' },
-  rightPanel:{ width: '260px', flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0' },
-
-  emptyState:{ maxWidth: '100%', background: '#0d1320', borderRadius: '12px', border: '1px dashed #1e2e47', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' },
-  emptyIcon: { fontSize: '40px', lineHeight: 1 },
-  emptyText: { fontSize: '14px', color: '#475569', textAlign: 'center', lineHeight: 1.6 },
-  emptyHint: { fontSize: '12px', color: '#2d3f5a' },
-
-  hint:      { fontSize: '12px', color: '#3b82f6', marginTop: '8px', fontStyle: 'italic' },
-  aggStrip:  { display: 'flex', gap: '16px', marginTop: '10px', flexWrap: 'wrap', padding: '8px 12px', background: '#0d1320', borderRadius: '8px', border: '1px solid #1e2e47' },
+  main:          { display: 'flex', gap: '16px', padding: '16px 24px', flex: 1, minHeight: 0, overflow: 'hidden' },
+  aside:         { width: '220px', flexShrink: 0, overflowY: 'auto' },
+  center:        { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, alignItems: 'flex-start', overflowY: 'auto' },
+  rightPanel:    { width: '260px', flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' },
+  emptyState:    { maxWidth: '100%', background: '#0d1320', borderRadius: '12px', border: '1px dashed #1e2e47', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' },
+  emptyIcon:     { fontSize: '40px', lineHeight: 1 },
+  emptyText:     { fontSize: '14px', color: '#475569', textAlign: 'center', lineHeight: 1.6 },
+  emptyHint:     { fontSize: '12px', color: '#2d3f5a' },
+  hint:          { fontSize: '12px', color: '#3b82f6', marginTop: '8px', fontStyle: 'italic' },
+  aggStrip:      { display: 'flex', gap: '16px', marginTop: '10px', flexWrap: 'wrap', padding: '8px 12px', background: '#0d1320', borderRadius: '8px', border: '1px solid #1e2e47' },
 }
