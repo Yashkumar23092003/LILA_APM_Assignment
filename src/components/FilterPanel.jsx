@@ -3,7 +3,6 @@ import { MAPS, DATES, EVENT_CONFIG } from '../utils/mapConfig.js'
 export default function FilterPanel({ filters, onChange, matchList }) {
   const { selectedMap, selectedDate, selectedMatch, showHumans, showBots, activeEvents } = filters
 
-  // Get filtered match options
   const matchOptions = matchList.filter(m =>
     (!selectedMap || m.map_id === selectedMap) &&
     (!selectedDate || m.date === selectedDate)
@@ -17,94 +16,130 @@ export default function FilterPanel({ filters, onChange, matchList }) {
   }
 
   return (
-    <div style={styles.panel}>
-      <h2 style={styles.title}>Filters</h2>
+    <div style={S.panel}>
 
-      {/* Map selector */}
-      <div style={styles.group}>
-        <label style={styles.label}>Map</label>
-        <select style={styles.select} value={selectedMap} onChange={e => onChange({ selectedMap: e.target.value, selectedMatch: '' })}>
-          <option value="">All Maps</option>
-          {MAPS.map(m => <option key={m}>{m}</option>)}
-        </select>
-      </div>
-
-      {/* Date selector */}
-      <div style={styles.group}>
-        <label style={styles.label}>Date</label>
-        <select style={styles.select} value={selectedDate} onChange={e => onChange({ selectedDate: e.target.value, selectedMatch: '' })}>
-          <option value="">All Dates</option>
-          {DATES.map(d => (
-            <option key={d} value={d}>{d.replace('_', ' ')}{d === 'February_14' ? ' ⚠️ partial' : ''}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Match selector */}
-      <div style={styles.group}>
-        <label style={styles.label}>Match ({matchOptions.length} available)</label>
-        <select style={styles.select} value={selectedMatch} onChange={e => onChange({ selectedMatch: e.target.value })}>
-          <option value="">Select a match...</option>
-          {matchOptions.map(m => (
-            <option key={m.match_id} value={m.match_id}>
-              {m.match_id.slice(0, 8)}... · {m.player_count}p · {m.total_events} evts
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Player type toggles */}
-      <div style={styles.group}>
-        <label style={styles.label}>Player Type</label>
-        <div style={styles.row}>
-          <button style={btnStyle(showHumans, '#60a5fa')} onClick={() => onChange({ showHumans: !showHumans })}>
-            👤 Humans
-          </button>
-          <button style={btnStyle(showBots, '#f472b6')} onClick={() => onChange({ showBots: !showBots })}>
-            🤖 Bots
-          </button>
-        </div>
-      </div>
-
-      {/* Event type toggles */}
-      <div style={styles.group}>
-        <label style={styles.label}>Event Markers</label>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {Object.entries(EVENT_CONFIG).filter(([k]) => !['Position','BotPosition'].includes(k)).map(([key, cfg]) => (
+      {/* ── MAP ── */}
+      <Section label="Map">
+        <div style={S.mapGrid}>
+          {MAPS.map(m => (
             <button
-              key={key}
-              style={btnStyle(activeEvents.includes(key), cfg.color)}
-              onClick={() => toggleEvent(key)}
+              key={m}
+              style={{
+                ...S.mapBtn,
+                borderColor: selectedMap === m ? '#3b82f6' : '#1e2e47',
+                background:  selectedMap === m ? '#1d4ed822' : '#0d1320',
+                color:       selectedMap === m ? '#60a5fa' : '#64748b',
+              }}
+              onClick={() => onChange({ selectedMap: m, selectedMatch: '' })}
             >
-              <span style={{ background: cfg.color, width: 10, height: 10, borderRadius: '50%', display: 'inline-block', marginRight: 6 }} />
-              {cfg.label}
+              {m === 'AmbroseValley' ? '🌿 Ambrose' : m === 'GrandRift' ? '🏔 GrandRift' : '🏙 Lockdown'}
             </button>
           ))}
         </div>
-      </div>
+      </Section>
+
+      {/* ── DATE ── */}
+      <Section label="Date">
+        <select
+          style={S.select}
+          value={selectedDate}
+          onChange={e => onChange({ selectedDate: e.target.value, selectedMatch: '' })}
+        >
+          <option value="">All dates</option>
+          {DATES.map(d => (
+            <option key={d} value={d}>
+              {d.replace('_',' ')}{d === 'February_14' ? ' ⚠️' : ''}
+            </option>
+          ))}
+        </select>
+      </Section>
+
+      {/* ── MATCH ── */}
+      <Section label={`Match  ·  ${matchOptions.length} available`}>
+        <select
+          style={S.select}
+          value={selectedMatch}
+          onChange={e => onChange({ selectedMatch: e.target.value })}
+        >
+          <option value="">Pick a match…</option>
+          {matchOptions.map(m => (
+            <option key={m.match_id} value={m.match_id}>
+              {m.match_id.slice(0, 8)}…  ·  {m.player_count}p  ·  {m.total_events} evt
+            </option>
+          ))}
+        </select>
+        {selectedMatch && (
+          <button style={S.clearBtn} onClick={() => onChange({ selectedMatch: '', selectedPlayer: null })}>
+            ✕ clear match
+          </button>
+        )}
+      </Section>
+
+      {/* ── PLAYER TYPE ── */}
+      <Section label="Player Type">
+        <div style={S.row}>
+          <TypeBtn active={showHumans} color="#60a5fa" icon="👤" label="Humans" onClick={() => onChange({ showHumans: !showHumans })} />
+          <TypeBtn active={showBots}   color="#f472b6" icon="🤖" label="Bots"   onClick={() => onChange({ showBots: !showBots })} />
+        </div>
+      </Section>
+
+      {/* ── EVENT MARKERS ── */}
+      <Section label="Event Markers">
+        <div style={S.eventList}>
+          {Object.entries(EVENT_CONFIG)
+            .filter(([k]) => !['Position','BotPosition'].includes(k))
+            .map(([key, cfg]) => {
+              const on = activeEvents.includes(key)
+              return (
+                <button key={key} style={{ ...S.evtBtn, borderColor: on ? cfg.color + '88' : '#1e2e47', background: on ? cfg.color + '14' : 'transparent' }} onClick={() => toggleEvent(key)}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: on ? cfg.color : '#334155', flexShrink: 0, display: 'inline-block' }} />
+                  <span style={{ fontSize: '11px', color: on ? cfg.color : '#475569', fontWeight: on ? 600 : 400 }}>{cfg.label}</span>
+                </button>
+              )
+            })}
+        </div>
+      </Section>
+
     </div>
   )
 }
 
-const btnStyle = (active, color) => ({
-  padding: '6px 12px',
-  borderRadius: '6px',
-  border: `1.5px solid ${active ? color : '#334155'}`,
-  background: active ? color + '22' : '#1a1f2e',
-  color: active ? color : '#64748b',
-  cursor: 'pointer',
-  fontSize: '12px',
-  fontWeight: 600,
-  transition: 'all 0.15s',
-  textAlign: 'left',
-  width: '100%',
-})
+function Section({ label, children }) {
+  return (
+    <div style={S.section}>
+      <span style={S.sectionLabel}>{label}</span>
+      {children}
+    </div>
+  )
+}
 
-const styles = {
-  panel: { display: 'flex', flexDirection: 'column', gap: '16px', width: '220px', flexShrink: 0 },
-  title: { fontSize: '14px', fontWeight: 700, color: '#f1f5f9', margin: 0 },
-  group: { display: 'flex', flexDirection: 'column', gap: '6px' },
-  label: { fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#475569' },
-  select: { background: '#1a1f2e', border: '1px solid #334155', borderRadius: '6px', color: '#e2e8f0', padding: '7px 10px', fontSize: '13px', width: '100%' },
-  row: { display: 'flex', gap: '8px' },
+function TypeBtn({ active, color, icon, label, onClick }) {
+  return (
+    <button
+      style={{
+        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+        padding: '7px 8px', borderRadius: '7px', cursor: 'pointer',
+        fontSize: '12px', fontWeight: 600, border: '1.5px solid', transition: 'all 0.15s',
+        borderColor: active ? color : '#1e2e47',
+        background:  active ? color + '18' : '#0d1320',
+        color:       active ? color : '#475569',
+      }}
+      onClick={onClick}
+    >
+      {icon} {label}
+    </button>
+  )
+}
+
+const S = {
+  panel:        { display: 'flex', flexDirection: 'column', gap: '2px' },
+  section:      { display: 'flex', flexDirection: 'column', gap: '7px', padding: '12px 0', borderBottom: '1px solid #131c2e' },
+  sectionLabel: { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#2d4060' },
+  mapGrid:      { display: 'grid', gridTemplateColumns: '1fr', gap: '4px' },
+  mapBtn:       { textAlign: 'left', padding: '7px 10px', borderRadius: '7px', border: '1.5px solid', cursor: 'pointer', fontSize: '12px', fontWeight: 500, transition: 'all 0.12s' },
+  select:       { background: '#0d1320', border: '1px solid #1e2e47', borderRadius: '7px', color: '#cbd5e1', padding: '7px 10px', fontSize: '12px', width: '100%', cursor: 'pointer', appearance: 'auto' },
+  clearBtn:     { background: 'none', border: 'none', color: '#334155', fontSize: '11px', cursor: 'pointer', textAlign: 'left', padding: '2px 0', marginTop: '-2px' },
+  row:          { display: 'flex', gap: '8px' },
+  eventList:    { display: 'flex', flexDirection: 'column', gap: '3px' },
+  evtBtn:       { display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', borderRadius: '6px', border: '1px solid', cursor: 'pointer', transition: 'all 0.12s', textAlign: 'left' },
 }
