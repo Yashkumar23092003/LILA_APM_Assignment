@@ -64,8 +64,8 @@ export default function App() {
   const [flowVectorData, setFlowVectorData] = useState(null)
 
   const [loading, setLoading] = useState(false)
-  const [showGuide,  setShowGuide]  = useState(() => !localStorage.getItem('lila_guide_seen'))
   const [showBuiltBy, setShowBuiltBy] = useState(() => !localStorage.getItem('lila_builtby_seen'))
+  const [showGuide,  setShowGuide]  = useState(() => !localStorage.getItem('lila_guide_seen'))
 
   useLayoutEffect(() => {
     const update = () => setCanvasSize(computeCanvasSize())

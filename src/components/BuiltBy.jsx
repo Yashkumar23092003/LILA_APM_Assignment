@@ -26,7 +26,7 @@ export default function BuiltBy({ onClose }) {
             <h1 style={S.headline}>
               LILA Journey Viewer
             </h1>
-            <p style={S.byline}>A brief, slightly self-aware message before you start judging the heatmaps.</p>
+            <p style={S.byline}>A brief, slightly self-aware message before you go through the heatmaps.</p>
 
             {/* Story */}
             <div style={S.story}>
