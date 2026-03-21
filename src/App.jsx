@@ -369,6 +369,34 @@ export default function App() {
 
 // ── Shared components ────────────────────────────────────────────
 
+// Tooltip — used for the Zone analysis ghost button (wraps the whole element)
+function Tooltip({ text, children }) {
+  const [show, setShow] = useState(false)
+  if (!text) return children
+  return (
+    <div style={{ position: 'relative', display: 'inline-flex' }}
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      {children}
+      {show && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 8px)', left: '50%',
+          transform: 'translateX(-50%)',
+          background: '#0d1320', border: '1px solid #2d4060', borderRadius: '8px',
+          padding: '9px 13px', fontSize: '11px', color: '#94a3b8',
+          maxWidth: '230px', width: 'max-content', zIndex: 2000,
+          pointerEvents: 'none', lineHeight: 1.6,
+          boxShadow: '0 6px 24px rgba(0,0,0,0.7)', whiteSpace: 'normal',
+        }}>
+          <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderBottom: '5px solid #2d4060' }} />
+          {text}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // HelpBadge — a small persistent "?" circle that reveals a tooltip on hover.
 // Placed INSIDE buttons so users always see there's help available.
 function HelpBadge({ text }) {
