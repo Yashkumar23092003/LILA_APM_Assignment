@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback, useLayoutEffect, useRef } from 'react'
+import { useState, useEffect, useCallback, useLayoutEffect } from 'react'
 import MapCanvas from './components/MapCanvas.jsx'
 import FilterPanel from './components/FilterPanel.jsx'
 import PlaybackBar from './components/PlaybackBar.jsx'
 import PlayerList from './components/PlayerList.jsx'
-import BotHumanStats from './components/BotHumanStats.jsx'
 import ZoneStats from './components/ZoneStats.jsx'
 
 const DEFAULT_FILTERS = {
@@ -37,15 +36,15 @@ export default function App() {
   const [heatmapMode, setHeatmapMode] = useState(false)
   const [heatmapType, setHeatmapType] = useState('position')
   const [showPaths,   setShowPaths]   = useState(true)
-  const [loading,     setLoading]     = useState(false)
-  const [canvasSize,  setCanvasSize]  = useState(600)
-  const mapCanvasRef = useRef(null)
+  const [loading,       setLoading]       = useState(false)
+  const [canvasSize,    setCanvasSize]    = useState(600)
+  const [showClusters,  setShowClusters]  = useState(false)   // F2 — opt-in toggle
 
   const [aggregateMode, setAggregateMode] = useState(false)
   const [aggregateData, setAggregateData] = useState(null)
   const [aggLoading,    setAggLoading]    = useState(false)
-  const [zoneMode,  setZoneMode]  = useState(false)
-  const [zoneStats, setZoneStats] = useState(null)
+  const [zoneMode,      setZoneMode]      = useState(false)   // F3 — power-user tool
+  const [zoneStats,     setZoneStats]     = useState(null)
 
   useLayoutEffect(() => {
     const update = () => setCanvasSize(computeCanvasSize())
@@ -81,15 +80,6 @@ export default function App() {
 
   const updateFilters = useCallback(changes => setFilters(prev => ({ ...prev, ...changes })), [])
   const handleZoneSelect = useCallback(stats => setZoneStats(stats), [])
-
-  const handleExport = () => {
-    const canvas = mapCanvasRef.current?.getCanvas()
-    if (!canvas) return
-    const link = document.createElement('a')
-    link.download = `lila_${matchData?.map_id}_${matchData?.date}_${filters.selectedMatch?.slice(0,8)}.png`
-    link.href = canvas.toDataURL('image/png')
-    link.click()
-  }
 
   const maxTime = matchData
     ? Math.max(...matchData.players.flatMap(p => p.events.map(e => e.ts_norm_ms)), 1000)
@@ -129,6 +119,7 @@ export default function App() {
 
         {/* Layer + tool controls */}
         <div style={T.controls}>
+          {/* Primary layer tools */}
           <div style={T.ctrlGroup}>
             <ToolBtn active={showPaths} onClick={() => setShowPaths(v => !v)} icon="🛤" label="Paths" />
             <ToolBtn
@@ -153,9 +144,30 @@ export default function App() {
             </select>
           )}
 
+          {/* Secondary analysis toggle — F2 clusters as explicit opt-in */}
           <div style={T.ctrlGroup}>
-            <ToolBtn active={zoneMode} onClick={() => { setZoneMode(v => !v); if (zoneMode) setZoneStats(null) }} icon="🎯" label="Zone" />
-            {hasMatch && <ToolBtn active={false} onClick={handleExport} icon="📷" label="Export" />}
+            <ToolBtn
+              active={showClusters}
+              onClick={() => setShowClusters(v => !v)}
+              icon="🔴" label="Clusters"
+              accent="#ef4444"
+            />
+          </div>
+
+          {/* Power-user / advanced — F3 zone tool, visually demoted */}
+          <div style={T.ctrlGroupGhost}>
+            <button
+              style={{
+                ...T.ghostBtn,
+                borderColor: zoneMode ? '#475569' : '#1a2333',
+                color:       zoneMode ? '#94a3b8' : '#2d4060',
+                background:  zoneMode ? '#1e2e4722' : 'transparent',
+              }}
+              onClick={() => { setZoneMode(v => !v); if (zoneMode) setZoneStats(null) }}
+              title="Advanced: drag a zone rectangle on the map to compute area stats"
+            >
+              🎯 Zone analysis
+            </button>
           </div>
         </div>
       </header>
@@ -177,12 +189,11 @@ export default function App() {
               </div>
             ) : aggregateData ? (
               <MapCanvas
-                ref={mapCanvasRef}
                 matchData={null} filters={filters} playbackTime={Infinity}
                 heatmapMode={false} heatmapType={heatmapType}
                 aggregateMode={aggregateMode} aggregateData={aggregateData}
                 showPaths={false} canvasSize={canvasSize}
-                zoneMode={false} onZoneSelect={handleZoneSelect}
+                showClusters={false} zoneMode={false} onZoneSelect={handleZoneSelect}
               />
             ) : (
               <div style={{ ...T.emptyState, width: canvasSize, height: canvasSize }}>
@@ -202,11 +213,11 @@ export default function App() {
             </div>
           ) : (
             <MapCanvas
-              ref={mapCanvasRef}
               matchData={matchData} filters={filters} playbackTime={playbackTime}
               heatmapMode={heatmapMode && !aggregateMode} heatmapType={heatmapType}
               aggregateMode={aggregateMode} aggregateData={aggregateData}
               showPaths={showPaths} canvasSize={canvasSize}
+              showClusters={showClusters}
               zoneMode={zoneMode} onZoneSelect={handleZoneSelect}
             />
           )}
@@ -259,7 +270,6 @@ export default function App() {
                 onSelect={uid => updateFilters({ selectedPlayer: uid })}
               />
             )}
-            {hasMatch && <BotHumanStats matchData={matchData} />}
             {zoneMode && <ZoneStats stats={zoneStats} onClear={() => setZoneStats(null)} />}
           </aside>
         )}
@@ -322,9 +332,11 @@ const T = {
   pilldot:   { width: 3, height: 3, borderRadius: '50%', background: '#2d3f5a', display: 'inline-block' },
   pillText:  { fontSize: '12px', color: '#64748b' },
 
-  controls:  { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
-  ctrlGroup: { display: 'flex', gap: '6px', padding: '0 4px', borderLeft: '1px solid #1e2e47' },
-  catSelect: { background: '#0d1320', border: '1px solid #1e2e47', color: '#a78bfa', borderRadius: '6px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer' },
+  controls:      { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
+  ctrlGroup:     { display: 'flex', gap: '6px', padding: '0 4px', borderLeft: '1px solid #1e2e47' },
+  ctrlGroupGhost:{ display: 'flex', gap: '6px', padding: '0 4px', borderLeft: '1px solid #131c2e', marginLeft: '4px' },
+  catSelect:     { background: '#0d1320', border: '1px solid #1e2e47', color: '#a78bfa', borderRadius: '6px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer' },
+  ghostBtn:      { padding: '5px 10px', borderRadius: '6px', border: '1px dashed', cursor: 'pointer', fontSize: '11px', fontWeight: 500, transition: 'all 0.15s' },
 
   main:      { display: 'flex', gap: '16px', padding: '16px 24px', flex: 1, minHeight: 0, overflow: 'hidden' },
   aside:     { width: '220px', flexShrink: 0, overflowY: 'auto' },

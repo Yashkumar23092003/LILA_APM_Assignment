@@ -7,6 +7,7 @@ const MapCanvas = forwardRef(function MapCanvas({
   heatmapMode, heatmapType,
   aggregateMode, aggregateData,
   showPaths, canvasSize = 700,
+  showClusters = false,
   zoneMode, onZoneSelect,
 }, ref) {
   const canvasRef = useRef(null)
@@ -188,6 +189,10 @@ const MapCanvas = forwardRef(function MapCanvas({
       })
     })
 
+    // 5. DEATH CLUSTER DETECTION — opt-in via showClusters toggle
+    if (!showClusters) return
+
+    // (cluster logic below only runs when showClusters is true)
     // 5. DEATH CLUSTER DETECTION — top 3 zones
     const GRID = 20
     const deathGrid = Array.from({length: GRID}, () => new Array(GRID).fill(0))
@@ -252,7 +257,7 @@ const MapCanvas = forwardRef(function MapCanvas({
       })
     }
 
-  }, [matchData, filters, playbackTime, heatmapMode, heatmapType, aggregateMode, aggregateData, showPaths, mapId, canvasSize])
+  }, [matchData, filters, playbackTime, heatmapMode, heatmapType, aggregateMode, aggregateData, showPaths, showClusters, mapId, canvasSize])
 
   useEffect(() => { draw() }, [draw])
 
