@@ -20,34 +20,33 @@ export default function BuiltBy({ onClose }) {
           <div style={S.body}>
 
             {/* Eyebrow */}
-            <div style={S.eyebrow}>Built with ❤️, mild sleep deprivation, and two AIs</div>
+            <div style={S.eyebrow}>Made with ❤️, mild sleep deprivation, and two AIs</div>
 
             {/* Main headline */}
             <h1 style={S.headline}>
               LILA Journey Viewer
             </h1>
-            <p style={S.byline}>An APM Assignment. A real dataset. A surprisingly good time.</p>
+            <p style={S.byline}>A brief, slightly self-aware message before you start judging the heatmaps.</p>
 
             {/* Story */}
             <div style={S.story}>
               <p style={S.para}>
-                This was built by{' '}
-                <span style={S.name}>Raj</span>
+                Built by{' '}
+                <span style={S.name}>Yash</span>
                 {' '}— who stared at 87,598 player events long enough that the dead zones
                 started staring back.
               </p>
               <p style={S.para}>
-                The architecture, the heatmaps, the animated tooltips, and approximately
-                forty-seven iterations of "why is the canvas blank" — none of it happened
-                without{' '}
+                The architecture, heatmaps, animated tooltips, and forty-seven variations of
+                "why is the canvas blank" all happened with{' '}
                 <span style={S.claude}>Claude</span>
-                {' '}(Anthropic's AI — yes, the one literally writing this sentence,
-                yes this is meta, no we're not stopping).
+                {' '}(Anthropic{"'"}s AI — yes, the one writing this sentence, yes this is meta,
+                no we{"'"}re not stopping). Engineering partner and debugging therapist in equal measure.
               </p>
               <p style={S.para}>
                 A respectful nod to{' '}
                 <span style={S.openai}>OpenAI</span>
-                {' '}as well. Because in 2026, crediting your full AI stack is just good manners.
+                {' '}too. In 2026, crediting your full AI stack is just good manners.
               </p>
             </div>
 
