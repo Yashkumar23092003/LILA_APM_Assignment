@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useLayoutEffect } from 'react'
+import { useState, useEffect, useCallback, useLayoutEffect, useRef } from 'react'
 import MapCanvas from './components/MapCanvas.jsx'
 import FilterPanel from './components/FilterPanel.jsx'
 import PlaybackBar from './components/PlaybackBar.jsx'
@@ -155,8 +155,13 @@ export default function App() {
         )}
 
         <div style={T.controls}>
-          {/* Primary layers */}
-          <div style={T.ctrlGroup}>
+
+          {/* ── Visualise dropdown ── */}
+          <NavDropdown
+            label="Visualise"
+            accent="#60a5fa"
+            active={showPaths || (heatmapMode && !aggregateMode) || aggregateMode}
+          >
             <ToolBtn active={showPaths} onClick={() => setShowPaths(v=>!v)} icon="🛤" label="Paths"
               tip="Draws each player's movement trail. Solid lines = humans, dashed = bots." />
             <ToolBtn
@@ -172,83 +177,70 @@ export default function App() {
               accent="#a78bfa"
               tip="Aggregates all 796 matches into one heatmap. Reveals long-term patterns across the entire map."
             />
-          </div>
+            {(heatmapMode || aggregateMode) && (
+              <>
+                <div style={T.dropDivider} />
+                <select style={{ ...T.catSelect, width: '100%' }} value={heatmapType}
+                  onChange={e => { setHeatmapType(e.target.value); setPhaseMode('all') }}>
+                  <optgroup label="Standard">
+                    <option value="position">Position density</option>
+                    <option value="kills">Kill zones</option>
+                    <option value="deaths">Death zones</option>
+                    <option value="loot">Loot zones</option>
+                  </optgroup>
+                  {heatmapMode && !aggregateMode && (
+                    <optgroup label="Special">
+                      <option value="landing">🪂 Landing / First drop</option>
+                    </optgroup>
+                  )}
+                </select>
+              </>
+            )}
+            {heatmapMode && !aggregateMode && heatmapType !== 'landing' && (
+              <div style={{ ...T.phaseTabs, width: '100%' }}>
+                {(['all','early','mid','late']).map(p => (
+                  <button key={p} style={{ ...T.phaseTab, flex: 1,
+                    background: phaseMode===p ? '#1d4ed8' : 'transparent',
+                    color: phaseMode===p ? '#93c5fd' : '#334155',
+                    borderColor: phaseMode===p ? '#3b82f6' : '#1a2333' }}
+                    onClick={() => setPhaseMode(p)}>
+                    {{ all:'All', early:'Early', mid:'Mid', late:'Late' }[p]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </NavDropdown>
 
-          {/* Heatmap type selector */}
-          {(heatmapMode || aggregateMode) && (
-            <select style={T.catSelect} value={heatmapType} onChange={e => { setHeatmapType(e.target.value); setPhaseMode('all') }}>
-              <optgroup label="Standard">
-                <option value="position">Position density</option>
-                <option value="kills">Kill zones</option>
-                <option value="deaths">Death zones</option>
-                <option value="loot">Loot zones</option>
-              </optgroup>
-              {heatmapMode && !aggregateMode && (
-                <optgroup label="Special">
-                  <option value="landing">🪂 Landing / First drop</option>
-                </optgroup>
-              )}
-            </select>
-          )}
+          {/* ── Analysis dropdown ── */}
+          <NavDropdown
+            label="Analysis"
+            accent="#10b981"
+            active={showScorecard || showDeadZones || showClusters || showFlowVectors || zoneMode}
+          >
+            <ToolBtn active={showScorecard} onClick={() => setShowScorecard(v=>!v)}
+              icon="⬡" label="Scorecard" accent="#10b981"
+              tip="Zone Balance Scorecard — K/D ratio, visit % and loot density per map zone, across all matches." />
+            <ToolBtn active={showDeadZones} onClick={() => setShowDeadZones(v=>!v)}
+              icon="☠" label="Dead zones" accent="#ef4444"
+              tip="Highlights areas of the map rarely visited by players — potential wasted design space." />
+            <ToolBtn active={showClusters} onClick={() => setShowClusters(v=>!v)}
+              icon="🔴" label="Clusters" accent="#ef4444"
+              tip="Top 3 locations where the most deaths occurred in this match. ①②③ = rank by % share of total deaths." />
+            <ToolBtn active={showFlowVectors} onClick={() => setShowFlowVectors(v=>!v)}
+              icon="↗" label="Flow" accent="#fb923c"
+              tip="Shows the dominant movement direction per grid cell. Reveals how players navigate the map." />
+            <div style={T.dropDivider} />
+            <button
+              style={{ ...T.ghostBtn, width: '100%', textAlign: 'left',
+                borderColor: zoneMode ? '#475569' : '#1e2e47',
+                color: zoneMode ? '#94a3b8' : '#475569',
+                background: zoneMode ? '#1e2e4722' : 'transparent' }}
+              onClick={() => { setZoneMode(v=>!v); if (zoneMode) setZoneStats(null) }}
+            >
+              🎯 Zone analysis
+            </button>
+          </NavDropdown>
 
-          {/* Phase tabs — only when single-match heatmap is on */}
-          {heatmapMode && !aggregateMode && heatmapType !== 'landing' && (
-            <div style={T.phaseTabs}>
-              {(['all','early','mid','late']).map(p => (
-                <button
-                  key={p}
-                  style={{ ...T.phaseTab, background: phaseMode === p ? '#1d4ed8' : 'transparent', color: phaseMode === p ? '#93c5fd' : '#334155', borderColor: phaseMode === p ? '#3b82f6' : '#1a2333' }}
-                  onClick={() => setPhaseMode(p)}
-                >
-                  {{ all:'All', early:'Early', mid:'Mid', late:'Late' }[p]}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Analysis overlays */}
-          <div style={T.ctrlGroup}>
-            <ToolBtn
-              active={showScorecard}
-              onClick={() => setShowScorecard(v=>!v)}
-              icon="⬡" label="Scorecard"
-              accent="#10b981"
-              tip="Zone Balance Scorecard — K/D ratio, visit % and loot density per map zone, across all matches."
-            />
-            <ToolBtn
-              active={showClusters}
-              onClick={() => setShowClusters(v=>!v)}
-              icon="🔴" label="Clusters"
-              accent="#ef4444"
-              tip="Top 3 locations where the most deaths occurred in this match. ①②③ = rank by % share of total deaths."
-            />
-            <ToolBtn
-              active={showDeadZones}
-              onClick={() => setShowDeadZones(v=>!v)}
-              icon="☠" label="Dead zones"
-              accent="#ef4444"
-              tip="Highlights areas of the map rarely visited by players — potential wasted design space."
-            />
-            <ToolBtn
-              active={showFlowVectors}
-              onClick={() => setShowFlowVectors(v=>!v)}
-              icon="↗" label="Flow"
-              accent="#fb923c"
-              tip="Shows the dominant movement direction per grid cell. Reveals how players navigate the map."
-            />
-          </div>
-
-          {/* Advanced / power-user */}
-          <div style={T.ctrlGroupGhost}>
-            <Tooltip text="Advanced: drag a rectangle on the map to get stats (players, kills, deaths, loot) for any custom area.">
-              <button
-                style={{ ...T.ghostBtn, borderColor: zoneMode ? '#475569' : '#1a2333', color: zoneMode ? '#94a3b8' : '#2d4060', background: zoneMode ? '#1e2e4722' : 'transparent' }}
-                onClick={() => { setZoneMode(v=>!v); if (zoneMode) setZoneStats(null) }}
-              >
-                🎯 Zone analysis
-              </button>
-            </Tooltip>
-          </div>
         </div>
       </header>
 
@@ -310,17 +302,6 @@ export default function App() {
             <p style={T.hint}>🎯 Drag a rectangle to analyse that area</p>
           )}
 
-          {/* Zone Balance Scorecard — below map */}
-          {showScorecard && (
-            scorecardLoading ? (
-              <div style={{ ...T.aggStrip, alignItems: 'center', gap: '10px', marginTop: 12 }}>
-                <Spinner /> <span style={{ fontSize: '12px', color: '#475569' }}>Loading scorecard for {activeMapId}…</span>
-              </div>
-            ) : (
-              <ZoneScorecard scorecardData={scorecardData} visible={showScorecard} />
-            )
-          )}
-
           {/* Playback bar */}
           {hasMatch && (
             <div style={{ marginTop: 12 }}>
@@ -351,9 +332,16 @@ export default function App() {
           )}
         </div>
 
-        {/* RIGHT: Player list + zone stats — always rendered to keep grid stable */}
+        {/* RIGHT: Scorecard (when on) or Player list + zone stats */}
         <aside style={T.rightPanel}>
-          {hasMatch && (
+          {showScorecard && (
+            scorecardLoading
+              ? <div style={{ display:'flex', alignItems:'center', gap:'8px', padding:'12px' }}>
+                  <Spinner /><span style={{ fontSize:'12px', color:'#475569' }}>Loading scorecard for {activeMapId}…</span>
+                </div>
+              : <ZoneScorecard scorecardData={scorecardData} visible={showScorecard} />
+          )}
+          {!showScorecard && hasMatch && (
             <PlayerList
               players={matchData.players}
               selectedPlayer={filters.selectedPlayer}
@@ -368,6 +356,47 @@ export default function App() {
 }
 
 // ── Shared components ────────────────────────────────────────────
+
+// NavDropdown — grouped feature dropdown for the navbar
+function NavDropdown({ label, active, accent = '#60a5fa', children }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+  return (
+    <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '5px',
+          padding: '6px 11px', borderRadius: '6px', cursor: 'pointer',
+          fontSize: '12px', fontWeight: 600, border: '1.5px solid',
+          transition: 'all 0.15s',
+          borderColor: (active || open) ? accent : '#1e2e47',
+          background:  (active || open) ? accent + '18' : 'transparent',
+          color:       (active || open) ? accent : '#64748b',
+        }}
+      >
+        <span>{label}</span>
+        <span style={{ fontSize: '8px', opacity: 0.6, marginLeft: '2px' }}>{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 8px)', left: 0,
+          background: '#0b1221', border: '1px solid #1e2e47', borderRadius: '10px',
+          padding: '10px', zIndex: 3000, minWidth: '210px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
+          display: 'flex', flexDirection: 'column', gap: '5px',
+        }}>
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // Tooltip — used for the Zone analysis ghost button (wraps the whole element)
 function Tooltip({ text, children }) {
@@ -518,4 +547,5 @@ const T = {
   emptyHint:     { fontSize: '12px', color: '#2d3f5a' },
   hint:          { fontSize: '12px', color: '#3b82f6', marginTop: '8px', fontStyle: 'italic' },
   aggStrip:      { display: 'flex', gap: '16px', marginTop: '10px', flexWrap: 'wrap', padding: '8px 12px', background: '#0d1320', borderRadius: '8px', border: '1px solid #1e2e47' },
+  dropDivider:   { height: '1px', background: '#1e2e47', margin: '3px 0' },
 }

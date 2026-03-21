@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 const FULL_PLAYBACK_REAL_MS = 30000
-const SPEEDS = [0.1, 0.25, 0.5, 1, 2, 5]
+const SPEEDS = [0.1, 0.25, 0.5, 1, 1.5, 2, 3, 5]
 
 export default function PlaybackBar({ maxTime, currentTime, isPlaying, speed, onTimeChange, onPlayPause, onSpeedChange }) {
   const rafRef      = useRef(null)
@@ -95,22 +95,18 @@ export default function PlaybackBar({ maxTime, currentTime, isPlaying, speed, on
           </div>
         </div>
 
-        {/* Right: speed pills */}
+        {/* Right: speed dropdown (YouTube style) */}
         <div style={S.speedRow}>
-          {SPEEDS.map(s => (
-            <button
-              key={s}
-              style={{
-                ...S.speedPill,
-                background:  speed === s ? '#1d4ed8' : 'transparent',
-                color:       speed === s ? '#93c5fd' : '#334155',
-                borderColor: speed === s ? '#3b82f6' : '#1e2e47',
-              }}
-              onClick={() => onSpeedChange(s)}
-            >
-              {s}×
-            </button>
-          ))}
+          <span style={S.speedLabel}>Speed</span>
+          <select
+            value={speed}
+            onChange={e => onSpeedChange(Number(e.target.value))}
+            style={S.speedSelect}
+          >
+            {SPEEDS.map(s => (
+              <option key={s} value={s}>{s}×</option>
+            ))}
+          </select>
         </div>
       </div>
     </div>
@@ -157,10 +153,16 @@ const S = {
   timeSep:     { fontSize: '13px', color: '#334155', fontWeight: 400 },
   timeTotal:   { fontSize: '13px', color: '#475569', fontFamily: "'Roboto Mono','Courier New',monospace" },
 
-  speedRow:    { display: 'flex', gap: '3px' },
-  speedPill:   {
-    padding: '3px 8px', borderRadius: '5px', border: '1px solid',
-    cursor: 'pointer', fontSize: '11px', fontWeight: 600,
-    transition: 'all 0.1s',
+  speedRow:    { display: 'flex', alignItems: 'center', gap: '6px' },
+  speedLabel:  { fontSize: '11px', color: '#334155', fontWeight: 500 },
+  speedSelect: {
+    background: '#111827', border: '1px solid #1e2e47', borderRadius: '6px',
+    color: '#93c5fd', fontSize: '12px', fontWeight: 700,
+    padding: '3px 8px', cursor: 'pointer', outline: 'none',
+    appearance: 'none', WebkitAppearance: 'none',
+    paddingRight: '22px',
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2364748b'/%3E%3C/svg%3E")`,
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'right 6px center',
   },
 }
